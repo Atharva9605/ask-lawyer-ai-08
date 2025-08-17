@@ -577,8 +577,8 @@ const Results = () => {
           {/* Professional Legal Analysis Document */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
             <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
-              <h1 className="text-3xl font-bold mb-2 text-white">Legal Analysis Report</h1>
-              <p className="text-white">
+              <h1 className="text-3xl font-bold mb-2 !text-white">Legal Analysis Report</h1>
+              <p className="!text-white opacity-90">
                 Comprehensive AI-powered legal case analysis with professional formatting
               </p>
             </div>
