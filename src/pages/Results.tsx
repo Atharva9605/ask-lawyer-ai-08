@@ -525,11 +525,11 @@ const Results = () => {
               >
                 {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </Button>
-              <Button onClick={handleCopyAnalysis} variant="outline" size="sm">
+              <Button onClick={handleCopyAnalysis} variant="outline" size="sm" className="border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
                 <Copy className="w-4 h-4 mr-2" />
                 Copy
               </Button>
-              <Button onClick={handleDownloadReport} variant="outline" size="sm">
+              <Button onClick={handleDownloadReport} variant="outline" size="sm" className="border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700">
                 <Download className="w-4 h-4 mr-2" />
                 Text
               </Button>
@@ -538,6 +538,7 @@ const Results = () => {
                 variant="outline" 
                 size="sm"
                 disabled={isExporting}
+                className="border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
               >
                 <FileDown className="w-4 h-4 mr-2" />
                 {isExporting ? 'Exporting...' : 'HTML'}
@@ -575,9 +576,9 @@ const Results = () => {
 
           {/* Professional Legal Analysis Document */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6 text-white">
-              <h1 className="text-3xl font-bold mb-2">Legal Analysis Report</h1>
-              <p className="text-blue-100">
+            <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
+              <h1 className="text-3xl font-bold mb-2 text-white">Legal Analysis Report</h1>
+              <p className="text-white">
                 Comprehensive AI-powered legal case analysis with professional formatting
               </p>
             </div>
