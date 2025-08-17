@@ -130,7 +130,7 @@ export const MessageContent: React.FC<MessageContentProps> = ({ content, classNa
           variant="ghost"
           size="sm"
           onClick={copyToClipboard}
-          className="text-xs h-6 px-2 opacity-60 hover:opacity-100 transition-opacity"
+          className="text-xs h-6 px-2 opacity-100 transition-opacity"
         >
           <Copy className="h-3 w-3 mr-1" />
           Copy

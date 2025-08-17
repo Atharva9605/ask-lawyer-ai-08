@@ -123,7 +123,7 @@ export const EnhancedLegalReferences: React.FC<EnhancedLegalReferencesProps> = (
                           variant="ghost" 
                           size="sm"
                           onClick={(e) => copyUrl(ref, e)}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="transition-opacity"
                         >
                           <Copy className="w-4 h-4" />
                         </Button>
@@ -132,7 +132,6 @@ export const EnhancedLegalReferences: React.FC<EnhancedLegalReferencesProps> = (
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <Button variant="ghost" size="sm">
                             <ExternalLink className="w-4 h-4" />

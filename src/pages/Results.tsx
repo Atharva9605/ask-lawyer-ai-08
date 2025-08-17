@@ -154,8 +154,26 @@ const Results = () => {
     // Trim whitespace
     cleanContent = cleanContent.trim();
 
+    // Decode HTML entities if present (e.g., &lt;div&gt;) so real HTML renders
+    const hasLiteralTags = /<\w+[\s\S]*>/i.test(cleanContent);
+    const hasEntities = /&lt;|&gt;|&amp;|&quot;|&#39;/i.test(cleanContent);
+    if (!hasLiteralTags && hasEntities) {
+      cleanContent = cleanContent
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&amp;/g, '&');
+    }
+
+    // If full HTML document provided, extract <body> content
+    if (/<body[\s\S]*?>[\s\S]*<\/body>/i.test(cleanContent)) {
+      const bodyMatch = cleanContent.match(/<body[\s\S]*?>([\s\S]*?)<\/body>/i);
+      if (bodyMatch && bodyMatch[1]) cleanContent = bodyMatch[1];
+    }
+
     // If the content is already HTML (contains HTML tags), render it directly with enhanced styling
-    if (cleanContent.includes('<') && cleanContent.includes('>')) {
+    if (/<\w+[\s\S]*>/i.test(cleanContent)) {
       return (
         <div>
           <style dangerouslySetInnerHTML={{
