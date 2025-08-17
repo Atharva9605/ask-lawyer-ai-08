@@ -1,0 +1,294 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Legal Advisor AI Design System - Professional Legal Tech Platform */
+
+@layer base {
+  :root {
+    /* Core Brand Colors - Legal Professional Theme */
+    --background: 210 20% 98%;
+    --foreground: 210 25% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 210 25% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 25% 11%;
+
+    /* Navy Blue Primary - Matching Specification (#001f3f) */
+    --primary: 210 100% 12%;
+    --primary-foreground: 210 20% 98%;
+    --primary-light: 210 100% 22%;
+    --primary-dark: 210 100% 8%;
+
+    /* Gold Accent - Matching Specification (#d4af37) */
+    --secondary: 45 82% 53%;
+    --secondary-foreground: 210 25% 11%;
+    --secondary-light: 45 82% 63%;
+    --secondary-dark: 45 82% 43%;
+
+    /* Light Blue Accent */
+    --accent: 213 94% 68%;
+    --accent-foreground: 210 20% 98%;
+    --accent-light: 213 94% 78%;
+    --accent-dark: 213 94% 58%;
+
+    /* Neutral Grays */
+    --muted: 210 20% 95%;
+    --muted-foreground: 210 15% 46%;
+    
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 210 20% 91%;
+    --input: 210 20% 95%;
+    --ring: 219 89% 25%;
+
+    --radius: 0.75rem;
+
+    /* Legal-Specific Design Tokens */
+    --legal-gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    --legal-gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-light)));
+    --legal-gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-light)) 50%, hsl(var(--accent)) 100%);
+    --legal-gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+    
+    /* Shadows */
+    --shadow-legal: 0 4px 20px -4px hsl(var(--primary) / 0.25);
+    --shadow-card: 0 2px 10px -2px hsl(var(--foreground) / 0.1);
+    --shadow-floating: 0 8px 25px -8px hsl(var(--primary) / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark Mode - Professional Legal Theme */
+    --background: 219 89% 8%;
+    --foreground: 210 20% 98%;
+
+    --card: 219 89% 12%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 219 89% 12%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 45 82% 53%;
+    --primary-foreground: 210 100% 8%;
+    --primary-light: 45 82% 63%;
+    --primary-dark: 45 82% 43%;
+
+    --secondary: 210 100% 20%;
+    --secondary-foreground: 210 20% 98%;
+    --secondary-light: 210 100% 30%;
+    --secondary-dark: 210 100% 12%;
+
+    --accent: 213 94% 68%;
+    --accent-foreground: 219 89% 8%;
+    --accent-light: 213 94% 78%;
+    --accent-dark: 213 94% 58%;
+
+    --muted: 219 89% 15%;
+    --muted-foreground: 210 15% 70%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+
+    --border: 219 89% 18%;
+    --input: 219 89% 15%;
+    --ring: 45 93% 47%;
+
+    --legal-gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    --legal-gradient-secondary: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--secondary-light)));
+    --legal-gradient-hero: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--primary)) 50%, hsl(var(--accent)) 100%);
+    --legal-gradient-card: linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%);
+
+    --shadow-legal: 0 4px 20px -4px hsl(var(--primary) / 0.4);
+    --shadow-card: 0 2px 10px -2px hsl(0 0% 0% / 0.3);
+    --shadow-floating: 0 8px 25px -8px hsl(var(--primary) / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
+
+@layer components {
+  /* Legal-Specific Component Styles */
+  .legal-gradient {
+    background: var(--legal-gradient-primary);
+  }
+  
+  .legal-gradient-hero {
+    background: var(--legal-gradient-hero);
+  }
+  
+  .legal-shadow {
+    box-shadow: var(--shadow-legal);
+  }
+  
+  .legal-card {
+    background: var(--legal-gradient-card);
+    box-shadow: var(--shadow-card);
+    transition: var(--transition-smooth);
+  }
+  
+  .legal-card:hover {
+    box-shadow: var(--shadow-floating);
+    transform: translateY(-2px);
+  }
+
+  .legal-button-hover {
+    transition: var(--transition-bounce);
+  }
+  
+  .legal-button-hover:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-floating);
+  }
+
+  /* Chat Message Styles */
+  .chat-message-user {
+    background: var(--legal-gradient-primary);
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .chat-message-ai {
+    background: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border: 1px solid hsl(var(--border));
+  }
+
+  /* Loading Animations */
+  .legal-pulse {
+    animation: legal-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes legal-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .legal-spin {
+    animation: legal-spin 1s linear infinite;
+  }
+  
+  @keyframes legal-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  /* Typography Classes */
+  .legal-heading {
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.025em;
+  }
+  
+  .legal-subheading {
+    font-weight: 600;
+    line-height: 1.4;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* Message Content Formatting */
+  .legal-message-content {
+    line-height: 1.6;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+
+  .legal-formatted-text {
+    color: inherit;
+  }
+
+  .legal-paragraph {
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+  }
+
+  .legal-link {
+    color: hsl(var(--primary));
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 2px;
+    transition: var(--transition-smooth);
+    font-weight: 500;
+  }
+
+  .legal-link:hover {
+    color: hsl(var(--primary-light));
+    text-decoration-thickness: 2px;
+  }
+
+  .legal-external-icon {
+    display: inline;
+    font-size: 0.8em;
+    margin-left: 2px;
+    opacity: 0.7;
+  }
+
+  .legal-code-block {
+    display: block;
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 8px 0;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.9em;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }
+
+  .legal-inline-code {
+    background: hsl(var(--muted));
+    border: 1px solid hsl(var(--border));
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 0.9em;
+  }
+
+  .legal-bullet-list, .legal-numbered-list {
+    margin: 8px 0;
+    padding-left: 20px;
+  }
+
+  .legal-bullet-list {
+    list-style-type: disc;
+  }
+
+  .legal-numbered-list {
+    list-style-type: decimal;
+  }
+
+  .legal-bullet-list li, .legal-numbered-list li {
+    margin-bottom: 4px;
+    line-height: 1.5;
+  }
+}
