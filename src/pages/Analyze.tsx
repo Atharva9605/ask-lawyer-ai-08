@@ -1,20 +1,18 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { ArrowLeft, Scale, AlertTriangle, CheckCircle, Clock, Copy, RotateCcw, FileText, Loader2, Brain } from 'lucide-react';
+import { ArrowLeft, Scale, AlertTriangle, CheckCircle, Clock, Copy, RotateCcw, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { analyzeCaseFormatted, healthCheck, type LegalAnalysis } from '@/lib/legalAdvisorAgent';
+import { analyzeCaseFormatted, healthCheck, type LegalAnalysis, type ThinkingStep } from '@/lib/legalAdvisorAgent';
 import { useNavigate } from 'react-router-dom';
-import { StreamingLegalAnalyzer, type AnalysisStep, type StreamingAnalysisCallbacks } from '@/lib/streamingApi';
-import { StreamingStepsDisplay } from '@/components/StreamingStepsDisplay';
+import { ThinkingStepsDisplay } from '@/components/ThinkingStepsDisplay';
 
 const Analyze = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const streamingAnalyzer = useRef<StreamingLegalAnalyzer | null>(null);
   
   // State management
   const [caseDescription, setCaseDescription] = useState('');
@@ -22,15 +20,10 @@ const Analyze = () => {
   const [error, setError] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<LegalAnalysis | null>(null);
   const [healthStatus, setHealthStatus] = useState<'healthy' | 'degraded' | 'error'>('healthy');
+  const [shownStepsCount, setShownStepsCount] = useState(0);
+  const [progressPercent, setProgressPercent] = useState(0);
   const [lastSubmittedDescription, setLastSubmittedDescription] = useState('');
   const [showCompleteAnalysis, setShowCompleteAnalysis] = useState(false);
-  
-  // Streaming analysis state
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [streamingSteps, setStreamingSteps] = useState<AnalysisStep[]>([]);
-  const [currentStep, setCurrentStep] = useState<number>(0);
-  const [totalSteps, setTotalSteps] = useState<number>(12);
-  const [streamingProgress, setStreamingProgress] = useState(0);
 
   const charCount = caseDescription.length;
   const minChars = 50;
@@ -49,75 +42,19 @@ const Analyze = () => {
     checkHealth();
   }, []);
 
-  // Streaming callbacks
-  const streamingCallbacks: StreamingAnalysisCallbacks = {
-    onStart: () => {
-      setIsStreaming(true);
-      setStreamingSteps([]);
-      setCurrentStep(0);
-      setStreamingProgress(0);
-      setError(null);
-      toast({
-        title: "Analysis Started",
-        description: "AI is beginning to analyze your case...",
-      });
-    },
+  // Animate step revelation
+  const revealSteps = useCallback((steps: ThinkingStep[]) => {
+    setShownStepsCount(0);
+    setProgressPercent(10);
 
-    onStepStart: (step: AnalysisStep) => {
-      setCurrentStep(step.step_number);
-      setStreamingSteps(prev => {
-        const existingIndex = prev.findIndex(s => s.step_number === step.step_number);
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = step;
-          return updated;
-        }
-        return [...prev, step].sort((a, b) => a.step_number - b.step_number);
-      });
-    },
-
-    onStepComplete: (step: AnalysisStep) => {
-      setStreamingSteps(prev => {
-        const updated = prev.map(s => 
-          s.step_number === step.step_number ? step : s
-        );
-        return updated.some(s => s.step_number === step.step_number) 
-          ? updated 
-          : [...updated, step].sort((a, b) => a.step_number - b.step_number);
-      });
-      
-      const progress = Math.round((step.step_number / totalSteps) * 100);
-      setStreamingProgress(Math.min(progress, 95));
-    },
-
-    onComplete: (analysisResult: any) => {
-      setIsStreaming(false);
-      setStreamingProgress(100);
-      setAnalysis(analysisResult);
-      setShowCompleteAnalysis(true);
-      toast({
-        title: "Analysis Complete",
-        description: "Your legal case analysis is ready. Click 'Generate Report' to view the full analysis.",
-      });
-    },
-
-    onError: (errorMessage: string) => {
-      setIsStreaming(false);
-      setError(errorMessage);
-      toast({
-        title: "Analysis Failed",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    },
-
-    onProgress: (current: number, total: number) => {
-      setTotalSteps(total);
-      setCurrentStep(current);
-      const progress = Math.round((current / total) * 100);
-      setStreamingProgress(Math.min(progress, 95));
-    }
-  };
+    steps.forEach((_, index) => {
+      setTimeout(() => {
+        setShownStepsCount(index + 1);
+        const progress = ((index + 1) / steps.length) * 90 + 10; // 10-100%
+        setProgressPercent(progress);
+      }, (index + 1) * 400); // 400ms intervals
+    });
+  }, []);
 
   // Handle case submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -135,19 +72,23 @@ const Analyze = () => {
     setLoading(true);
     setError(null);
     setAnalysis(null);
-    setShowCompleteAnalysis(false);
-    setStreamingSteps([]);
-    setCurrentStep(0);
-    setStreamingProgress(0);
+    setShownStepsCount(0);
+    setProgressPercent(10);
     setLastSubmittedDescription(caseDescription);
 
     try {
-      // Initialize streaming analyzer
-      streamingAnalyzer.current = new StreamingLegalAnalyzer(streamingCallbacks);
+      const result = await analyzeCaseFormatted(caseDescription);
+      setAnalysis(result);
+      revealSteps(result.thinking_steps);
       
-      // Start streaming analysis
-      await streamingAnalyzer.current.startAnalysis(caseDescription);
-      
+      // Show completion message after thinking steps are revealed
+      setTimeout(() => {
+        setShowCompleteAnalysis(true);
+        toast({
+          title: "Analysis Complete",
+          description: "Review the thinking process and click 'Generate Report' to see the full analysis.",
+        });
+      }, (result.thinking_steps.length * 400) + 1000);
     } catch (error) {
       console.error('Analysis error:', error);
       let errorMessage = 'Analysis failed, please try again';
@@ -163,7 +104,6 @@ const Analyze = () => {
       }
       
       setError(errorMessage);
-      setIsStreaming(false);
       toast({
         title: "Analysis Failed",
         description: errorMessage,
@@ -202,21 +142,13 @@ const Analyze = () => {
   };
 
   const handleNewAnalysis = () => {
-    // Close any existing streaming connection
-    if (streamingAnalyzer.current) {
-      streamingAnalyzer.current.close();
-      streamingAnalyzer.current = null;
-    }
-    
     setCaseDescription('');
     setAnalysis(null);
     setError(null);
+    setShownStepsCount(0);
+    setProgressPercent(0);
     setLastSubmittedDescription('');
     setShowCompleteAnalysis(false);
-    setIsStreaming(false);
-    setStreamingSteps([]);
-    setCurrentStep(0);
-    setStreamingProgress(0);
   };
 
   const handleGenerateReport = () => {
@@ -244,14 +176,11 @@ const Analyze = () => {
     }
   };
 
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (streamingAnalyzer.current) {
-        streamingAnalyzer.current.close();
-      }
-    };
-  }, []);
+  const getStepStatus = (index: number) => {
+    if (index < shownStepsCount) return 'completed';
+    if (index === shownStepsCount - 1) return 'current';
+    return 'pending';
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
@@ -313,19 +242,16 @@ const Analyze = () => {
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={!isValidInput || loading || isStreaming}
+                  disabled={!isValidInput || loading}
                   className="w-full"
                 >
-                  {loading || isStreaming ? (
+                  {loading ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {isStreaming ? 'Streaming Analysis...' : 'Starting Analysis...'}
+                      <Clock className="w-4 h-4 mr-2 animate-spin" />
+                      Analyzing Case...
                     </>
                   ) : (
-                    <>
-                      <Brain className="w-4 h-4 mr-2" />
-                      Analyze Case
-                    </>
+                    'Analyze Case'
                   )}
                 </Button>
               </form>
@@ -356,7 +282,7 @@ const Analyze = () => {
           {/* Right Panel - Analysis Results */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
             <div className="p-6 h-full flex flex-col">
-              {!loading && !isStreaming && !analysis && !error && (
+              {!loading && !analysis && !error && (
                 <div className="flex-1 flex items-center justify-center text-center">
                   <div className="text-slate-500 dark:text-slate-400">
                     <Scale className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -366,28 +292,41 @@ const Analyze = () => {
                 </div>
               )}
 
-              {(loading || isStreaming) && (
+              {loading && (
                 <div className="space-y-6">
                   <div className="text-center">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center justify-center gap-2">
-                      <Brain className="w-6 h-6 text-blue-600" />
-                      {isStreaming ? 'Streaming Analysis' : 'Starting Analysis'}
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                      Analyzing Your Case
                     </h3>
-                    <Progress value={streamingProgress} className="w-full" />
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                      Step {currentStep} of {totalSteps} • {streamingProgress}% Complete
-                    </p>
+                    <Progress value={progressPercent} className="w-full" />
                   </div>
 
-                  {/* Streaming Steps Display */}
-                  {isStreaming && (
-                    <StreamingStepsDisplay
-                      steps={streamingSteps}
-                      currentStep={currentStep}
-                      totalSteps={totalSteps}
-                      isStreaming={isStreaming}
-                    />
-                  )}
+                  {/* Thinking Steps Timeline */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                          Step 1: Initial Analysis
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          AI is analyzing your case...
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                          Step 2: Research & Revision
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          AI is conducting research...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -406,23 +345,22 @@ const Analyze = () => {
                   {/* Case Info */}
                   <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                      {analysis.case_name || 'Legal Case Analysis'}
+                      {analysis.case_name}
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-                      <span>Analysis Date: {analysis.analysis_date ? format(new Date(analysis.analysis_date), 'PPP') : format(new Date(), 'PPP')}</span>
-                      {analysis.processing_time && <span>Processing Time: {analysis.processing_time}s</span>}
-                      <span>Steps: {streamingSteps.length}</span>
+                      <span>Analysis Date: {format(new Date(analysis.analysis_date), 'PPP')}</span>
+                      <span>Processing Time: {analysis.processing_time}s</span>
+                      <span>Steps: {analysis.total_steps}</span>
                     </div>
                   </div>
 
-                  {/* Streaming Steps Display */}
-                  {streamingSteps.length > 0 && (
+                  {/* Thinking Steps Display */}
+                  {analysis.thinking_steps && analysis.thinking_steps.length > 0 && (
                     <div className="mb-6">
-                      <StreamingStepsDisplay
-                        steps={streamingSteps}
-                        currentStep={currentStep}
-                        totalSteps={totalSteps}
-                        isStreaming={false}
+                      <ThinkingStepsDisplay 
+                        steps={analysis.thinking_steps.slice(0, shownStepsCount)}
+                        isStreaming={!showCompleteAnalysis}
+                        currentStep={shownStepsCount}
                       />
                     </div>
                   )}
@@ -436,12 +374,12 @@ const Analyze = () => {
                           Analysis Complete!
                         </h3>
                         <p className="text-green-700 dark:text-green-300 mb-4">
-                          The AI has finished analyzing your case with {streamingSteps.length} detailed steps. Click below to view the comprehensive legal report.
+                          The AI has finished analyzing your case. Click below to view the detailed legal report.
                         </p>
                         <Button 
                           onClick={handleGenerateReport}
                           size="lg"
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white legal-button-hover"
                         >
                           <FileText className="w-5 h-5 mr-2" />
                           Generate Full Report
