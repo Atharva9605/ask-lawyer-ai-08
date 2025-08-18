@@ -2,19 +2,29 @@
 const API_BASE = 'https://legal-advisor-api.onrender.com';
 
 export interface StreamingEvent {
-  type: 'start' | 'step_start' | 'thinking_update' | 'step' | 'complete' | 'error';
+  type: 'start' | 'step_start' | 'step_complete' | 'thinking_update' | 'complete' | 'error';
   data?: any;
   step_number?: number;
   timestamp?: string;
 }
 
+export interface AnalysisStep {
+  step_number: number;
+  step_name: string;
+  description: string;
+  details?: string;
+  timestamp: string;
+  status: 'in_progress' | 'completed' | 'failed';
+}
+
 export interface StreamingAnalysisCallbacks {
   onStart?: () => void;
-  onStepStart?: (stepNumber: number, stepName: string) => void;
+  onStepStart?: (step: AnalysisStep) => void;
   onThinkingUpdate?: (stepNumber: number, content: string) => void;
-  onStepComplete?: (step: any) => void;
+  onStepComplete?: (step: AnalysisStep) => void;
   onComplete?: (analysis: any) => void;
   onError?: (error: string) => void;
+  onProgress?: (current: number, total: number) => void;
 }
 
 export class StreamingLegalAnalyzer {
@@ -78,8 +88,15 @@ export class StreamingLegalAnalyzer {
         break;
         
       case 'step_start':
-        if (event.step_number && event.data?.step_name) {
-          this.callbacks.onStepStart?.(event.step_number, event.data.step_name);
+        if (event.step_number && event.data) {
+          const step: AnalysisStep = {
+            step_number: event.step_number,
+            step_name: event.data.step_name || `Step ${event.step_number}`,
+            description: event.data.description || '',
+            timestamp: event.timestamp || new Date().toISOString(),
+            status: 'in_progress'
+          };
+          this.callbacks.onStepStart?.(step);
         }
         break;
         
@@ -89,9 +106,17 @@ export class StreamingLegalAnalyzer {
         }
         break;
         
-      case 'step':
-        if (event.data) {
-          this.callbacks.onStepComplete?.(event.data);
+      case 'step_complete':
+        if (event.step_number && event.data) {
+          const step: AnalysisStep = {
+            step_number: event.step_number,
+            step_name: event.data.step_name || `Step ${event.step_number}`,
+            description: event.data.description || '',
+            details: event.data.details,
+            timestamp: event.timestamp || new Date().toISOString(),
+            status: event.data.status === 'failed' ? 'failed' : 'completed'
+          };
+          this.callbacks.onStepComplete?.(step);
         }
         break;
         
