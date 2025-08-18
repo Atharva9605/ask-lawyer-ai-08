@@ -301,16 +301,16 @@ const Analyze = () => {
                     <Progress value={progressPercent} className="w-full" />
                   </div>
 
-                  {/* Thinking Steps Timeline */}
+                  {/* Multi-Step Analysis Progress */}
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
                       <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
                       <div>
                         <p className="font-medium text-slate-900 dark:text-slate-100">
-                          Step 1: Initial Analysis
+                          🧠 Initial Legal Analysis
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          AI is analyzing your case...
+                          AI is examining case facts and identifying key legal issues...
                         </p>
                       </div>
                     </div>
@@ -319,10 +319,34 @@ const Analyze = () => {
                       <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
                       <div>
                         <p className="font-medium text-slate-900 dark:text-slate-100">
-                          Step 2: Research & Revision
+                          🔎 Legal Research & Citations
                         </p>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          AI is conducting research...
+                          AI is searching for relevant laws, precedents, and regulations...
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                          ✅ Legal Review & Synthesis
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          AI is synthesizing findings and preparing recommendations...
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-4 rounded-lg bg-slate-50 dark:bg-slate-800">
+                      <Clock className="w-5 h-5 text-amber-600 animate-pulse" />
+                      <div>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                          📝 Final Legal Opinion
+                        </p>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          AI is formatting the comprehensive legal analysis...
                         </p>
                       </div>
                     </div>
