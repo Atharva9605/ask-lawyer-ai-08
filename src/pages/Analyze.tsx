@@ -6,9 +6,9 @@ import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Scale, AlertTriangle, CheckCircle, Clock, Copy, RotateCcw, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
-import { analyzeCaseFormatted, healthCheck, type LegalAnalysis, type ThinkingStep } from '@/lib/legalAdvisorAgent';
+import { healthCheck } from '@/lib/legalAdvisorAgent';
+import { StreamingLegalAnalyzer } from '@/lib/streamingApi';
 import { useNavigate } from 'react-router-dom';
-import { ThinkingStepsDisplay } from '@/components/ThinkingStepsDisplay';
 
 const Analyze = () => {
   const { toast } = useToast();
@@ -18,12 +18,11 @@ const Analyze = () => {
   const [caseDescription, setCaseDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [analysis, setAnalysis] = useState<LegalAnalysis | null>(null);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [analysisComplete, setAnalysisComplete] = useState(false);
   const [healthStatus, setHealthStatus] = useState<'healthy' | 'degraded' | 'error'>('healthy');
-  const [shownStepsCount, setShownStepsCount] = useState(0);
   const [progressPercent, setProgressPercent] = useState(0);
   const [lastSubmittedDescription, setLastSubmittedDescription] = useState('');
-  const [showCompleteAnalysis, setShowCompleteAnalysis] = useState(false);
 
   const charCount = caseDescription.length;
   const minChars = 50;
@@ -42,21 +41,7 @@ const Analyze = () => {
     checkHealth();
   }, []);
 
-  // Animate step revelation
-  const revealSteps = useCallback((steps: ThinkingStep[]) => {
-    setShownStepsCount(0);
-    setProgressPercent(10);
-
-    steps.forEach((_, index) => {
-      setTimeout(() => {
-        setShownStepsCount(index + 1);
-        const progress = ((index + 1) / steps.length) * 90 + 10; // 10-100%
-        setProgressPercent(progress);
-      }, (index + 1) * 400); // 400ms intervals
-    });
-  }, []);
-
-  // Handle case submission
+  // Handle case submission with streaming
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -71,24 +56,43 @@ const Analyze = () => {
 
     setLoading(true);
     setError(null);
-    setAnalysis(null);
-    setShownStepsCount(0);
+    setStreamingContent('');
+    setAnalysisComplete(false);
     setProgressPercent(10);
     setLastSubmittedDescription(caseDescription);
 
     try {
-      const result = await analyzeCaseFormatted(caseDescription);
-      setAnalysis(result);
-      revealSteps(result.thinking_steps);
-      
-      // Show completion message after thinking steps are revealed
-      setTimeout(() => {
-        setShowCompleteAnalysis(true);
-        toast({
-          title: "Analysis Complete",
-          description: "Review the thinking process and click 'Generate Report' to see the full analysis.",
-        });
-      }, (result.thinking_steps.length * 400) + 1000);
+      const analyzer = new StreamingLegalAnalyzer({
+        onStart: () => {
+          console.log('Analysis started');
+          setProgressPercent(20);
+        },
+        onData: (data: string) => {
+          setStreamingContent(prev => prev + data);
+          setProgressPercent(prev => Math.min(prev + 1, 90));
+        },
+        onComplete: (fullResponse: string) => {
+          setStreamingContent(fullResponse);
+          setAnalysisComplete(true);
+          setProgressPercent(100);
+          setLoading(false);
+          toast({
+            title: "Analysis Complete",
+            description: "Your legal analysis has been completed successfully.",
+          });
+        },
+        onError: (errorMsg: string) => {
+          setError(errorMsg);
+          setLoading(false);
+          toast({
+            title: "Analysis Failed",
+            description: errorMsg,
+            variant: "destructive"
+          });
+        }
+      });
+
+      await analyzer.startAnalysis(caseDescription);
     } catch (error) {
       console.error('Analysis error:', error);
       let errorMessage = 'Analysis failed, please try again';
@@ -104,13 +108,12 @@ const Analyze = () => {
       }
       
       setError(errorMessage);
+      setLoading(false);
       toast({
         title: "Analysis Failed",
         description: errorMessage,
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -124,9 +127,9 @@ const Analyze = () => {
   };
 
   const handleCopyAnalysis = async () => {
-    if (analysis?.final_answer) {
+    if (streamingContent) {
       try {
-        await navigator.clipboard.writeText(analysis.final_answer);
+        await navigator.clipboard.writeText(streamingContent);
         toast({
           title: "Copied to Clipboard",
           description: "Legal analysis has been copied to your clipboard.",
@@ -143,18 +146,28 @@ const Analyze = () => {
 
   const handleNewAnalysis = () => {
     setCaseDescription('');
-    setAnalysis(null);
+    setStreamingContent('');
+    setAnalysisComplete(false);
     setError(null);
-    setShownStepsCount(0);
     setProgressPercent(0);
     setLastSubmittedDescription('');
-    setShowCompleteAnalysis(false);
   };
 
   const handleGenerateReport = () => {
-    if (analysis) {
+    if (streamingContent) {
+      // Create a mock analysis object for the results page
+      const mockAnalysis = {
+        case_name: "Legal Case Analysis",
+        analysis_date: new Date().toISOString(),
+        processing_time: "5.2",
+        total_steps: 4,
+        thinking_steps: [],
+        final_answer: streamingContent,
+        links: []
+      };
+      
       navigate('/results', { 
-        state: { analysis },
+        state: { analysis: mockAnalysis },
         replace: false 
       });
     }
@@ -174,12 +187,6 @@ const Analyze = () => {
       case 'degraded': return 'Service Degraded';
       case 'error': return 'Service Offline';
     }
-  };
-
-  const getStepStatus = (index: number) => {
-    if (index < shownStepsCount) return 'completed';
-    if (index === shownStepsCount - 1) return 'current';
-    return 'pending';
   };
 
   return (
@@ -257,12 +264,12 @@ const Analyze = () => {
               </form>
 
               {/* Action Buttons */}
-                {(analysis || error) && (
+                {(streamingContent || error) && (
                 <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
                   <Button onClick={handleNewAnalysis} variant="outline" size="sm">
                     New Analysis
                   </Button>
-                  {analysis && !showCompleteAnalysis && (
+                  {streamingContent && !analysisComplete && (
                     <Button onClick={handleCopyAnalysis} variant="outline" size="sm">
                       <Copy className="w-4 h-4 mr-2" />
                       Copy Analysis
@@ -282,7 +289,7 @@ const Analyze = () => {
           {/* Right Panel - Analysis Results */}
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
             <div className="p-6 h-full flex flex-col">
-              {!loading && !analysis && !error && (
+              {!loading && !streamingContent && !error && (
                 <div className="flex-1 flex items-center justify-center text-center">
                   <div className="text-slate-500 dark:text-slate-400">
                     <Scale className="w-16 h-16 mx-auto mb-4 opacity-50" />
@@ -364,33 +371,36 @@ const Analyze = () => {
                 </div>
               )}
 
-              {analysis && (
+              {streamingContent && (
                 <div className="flex-1 overflow-auto">
-                  {/* Case Info */}
+                  {/* Streaming Analysis Display */}
                   <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
                     <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                      {analysis.case_name}
+                      Legal Case Analysis
                     </h3>
                     <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-                      <span>Analysis Date: {format(new Date(analysis.analysis_date), 'PPP')}</span>
-                      <span>Processing Time: {analysis.processing_time}s</span>
-                      <span>Steps: {analysis.total_steps}</span>
+                      <span>Analysis Date: {format(new Date(), 'PPP')}</span>
+                      <span>Status: {analysisComplete ? 'Complete' : 'Streaming...'}</span>
                     </div>
                   </div>
 
-                  {/* Thinking Steps Display */}
-                  {analysis.thinking_steps && analysis.thinking_steps.length > 0 && (
-                    <div className="mb-6">
-                      <ThinkingStepsDisplay 
-                        steps={analysis.thinking_steps.slice(0, shownStepsCount)}
-                        isStreaming={!showCompleteAnalysis}
-                        currentStep={shownStepsCount}
-                      />
+                  {/* Streaming Content */}
+                  <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
+                    <div className="prose prose-slate dark:prose-invert max-w-none">
+                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
+                        {streamingContent}
+                      </pre>
+                      {!analysisComplete && (
+                        <div className="inline-flex items-center gap-2 mt-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm text-slate-500">AI is writing...</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
 
                   {/* Generate Report Button */}
-                  {showCompleteAnalysis && (
+                  {analysisComplete && (
                     <div className="text-center py-6">
                       <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800 mb-6">
                         <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />

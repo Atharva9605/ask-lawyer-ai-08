@@ -1,25 +1,17 @@
 // Streaming API Client for Real-time Legal Analysis
-const API_BASE = 'https://legal-advisor-api.onrender.com';
-
-export interface StreamingEvent {
-  type: 'start' | 'step_start' | 'thinking_update' | 'step' | 'complete' | 'error';
-  data?: any;
-  step_number?: number;
-  timestamp?: string;
-}
+const API_BASE = 'https://legal-backend-sse.onrender.com';
 
 export interface StreamingAnalysisCallbacks {
   onStart?: () => void;
-  onStepStart?: (stepNumber: number, stepName: string) => void;
-  onThinkingUpdate?: (stepNumber: number, content: string) => void;
-  onStepComplete?: (step: any) => void;
-  onComplete?: (analysis: any) => void;
+  onData?: (data: string) => void;
+  onComplete?: (fullResponse: string) => void;
   onError?: (error: string) => void;
 }
 
 export class StreamingLegalAnalyzer {
   private eventSource: EventSource | null = null;
   private callbacks: StreamingAnalysisCallbacks = {};
+  private accumulatedResponse: string = '';
 
   constructor(callbacks: StreamingAnalysisCallbacks) {
     this.callbacks = callbacks;
@@ -29,36 +21,43 @@ export class StreamingLegalAnalyzer {
     try {
       // Close any existing connection
       this.close();
+      this.accumulatedResponse = '';
 
-      // Create the streaming connection
-      const url = `${API_BASE}/analyze-case-stream`;
-      const encodedDescription = encodeURIComponent(caseDescription);
+      // Create the streaming connection using the new SSE API
+      const encodedPrompt = encodeURIComponent(caseDescription);
+      const url = `${API_BASE}/stream?prompt=${encodedPrompt}`;
       
-      this.eventSource = new EventSource(`${url}?case_description=${encodedDescription}`);
+      this.eventSource = new EventSource(url);
 
       // Set up event listeners
       this.eventSource.onopen = () => {
-        console.log('Streaming connection opened');
+        console.log('SSE connection opened');
+        this.callbacks.onStart?.();
       };
 
       this.eventSource.onmessage = (event) => {
-        try {
-          const streamEvent: StreamingEvent = JSON.parse(event.data);
-          this.handleStreamEvent(streamEvent);
-        } catch (error) {
-          console.error('Error parsing stream event:', error);
-          this.callbacks.onError?.('Failed to parse stream data');
+        // Handle regular data messages
+        if (event.data && event.data.trim()) {
+          this.accumulatedResponse += event.data;
+          this.callbacks.onData?.(event.data);
         }
       };
+
+      // Listen for the 'done' event that signals completion
+      this.eventSource.addEventListener('done', () => {
+        console.log('Stream completed');
+        this.callbacks.onComplete?.(this.accumulatedResponse);
+        this.close();
+      });
 
       this.eventSource.onerror = (error) => {
         console.error('EventSource error:', error);
         this.callbacks.onError?.('Connection error occurred');
         this.close();
         
-        // Attempt to reconnect after a delay
+        // Attempt to reconnect after a delay if there's accumulated data
         setTimeout(() => {
-          if (this.eventSource?.readyState === EventSource.CLOSED) {
+          if (this.eventSource?.readyState === EventSource.CLOSED && !this.accumulatedResponse) {
             console.log('Attempting to reconnect...');
             this.startAnalysis(caseDescription);
           }
@@ -68,47 +67,6 @@ export class StreamingLegalAnalyzer {
     } catch (error) {
       console.error('Failed to start streaming analysis:', error);
       this.callbacks.onError?.('Failed to start analysis');
-    }
-  }
-
-  private handleStreamEvent(event: StreamingEvent): void {
-    switch (event.type) {
-      case 'start':
-        this.callbacks.onStart?.();
-        break;
-        
-      case 'step_start':
-        if (event.step_number && event.data?.step_name) {
-          this.callbacks.onStepStart?.(event.step_number, event.data.step_name);
-        }
-        break;
-        
-      case 'thinking_update':
-        if (event.step_number && event.data?.content) {
-          this.callbacks.onThinkingUpdate?.(event.step_number, event.data.content);
-        }
-        break;
-        
-      case 'step':
-        if (event.data) {
-          this.callbacks.onStepComplete?.(event.data);
-        }
-        break;
-        
-      case 'complete':
-        if (event.data) {
-          this.callbacks.onComplete?.(event.data);
-        }
-        this.close();
-        break;
-        
-      case 'error':
-        this.callbacks.onError?.(event.data?.message || 'Unknown error occurred');
-        this.close();
-        break;
-        
-      default:
-        console.warn('Unknown stream event type:', event.type);
     }
   }
 
