@@ -82,16 +82,16 @@ export class StreamingLegalAnalyzer {
   }
 }
 
-// Fallback function for non-streaming analysis
+// Fallback function for non-streaming analysis using POST
 export const analyzeCaseNonStreaming = async (caseDescription: string) => {
   try {
-    const response = await fetch(`${API_BASE}/analyze-case`, {
+    const response = await fetch(`${API_BASE}/stream`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        case_description: caseDescription
+        case_facts: caseDescription
       }),
     });
 
@@ -99,7 +99,28 @@ export const analyzeCaseNonStreaming = async (caseDescription: string) => {
       throw new Error('Analysis failed, please try again');
     }
 
-    return await response.json();
+    // For POST, we'd need to handle the stream response
+    // This is a fallback, so we'll read the full response
+    const reader = response.body?.getReader();
+    let fullResponse = '';
+    
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            fullResponse += line.slice(6) + '\n';
+          }
+        }
+      }
+    }
+    
+    return { analysis: fullResponse };
   } catch (error) {
     if (error instanceof Error) {
       throw error;
