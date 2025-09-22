@@ -24,49 +24,55 @@ export class StreamingLegalAnalyzer {
       this.accumulatedResponse = '';
 
       // Create the streaming connection using the new SSE API
-      const encodedPrompt = encodeURIComponent(caseDescription);
+      // Use proper URL encoding for the case description
+      const encodedPrompt = encodeURIComponent(caseDescription.trim());
       const url = `${API_BASE}/stream?prompt=${encodedPrompt}`;
       
+      console.log('Starting SSE connection to:', url);
       this.eventSource = new EventSource(url);
 
       // Set up event listeners
-      this.eventSource.onopen = () => {
-        console.log('SSE connection opened');
+      this.eventSource.onopen = (event) => {
+        console.log('SSE connection opened successfully', event);
         this.callbacks.onStart?.();
       };
 
       this.eventSource.onmessage = (event) => {
+        console.log('SSE message received:', event.data);
         // Handle regular data messages
-        if (event.data && event.data.trim()) {
-          this.accumulatedResponse += event.data;
-          this.callbacks.onData?.(event.data);
+        if (event.data && event.data.trim() && event.data !== '[DONE]') {
+          const chunk = event.data;
+          this.accumulatedResponse += chunk + '\n';
+          this.callbacks.onData?.(chunk + '\n');
         }
       };
 
       // Listen for the 'done' event that signals completion
-      this.eventSource.addEventListener('done', () => {
-        console.log('Stream completed');
+      this.eventSource.addEventListener('done', (event) => {
+        console.log('Stream completed with done event', event);
         this.callbacks.onComplete?.(this.accumulatedResponse);
         this.close();
       });
 
-      this.eventSource.onerror = (error) => {
-        console.error('EventSource error:', error);
-        this.callbacks.onError?.('Connection error occurred');
-        this.close();
+      // Handle connection errors
+      this.eventSource.onerror = (event) => {
+        console.error('EventSource error occurred:', event);
+        console.error('EventSource readyState:', this.eventSource?.readyState);
         
-        // Attempt to reconnect after a delay if there's accumulated data
-        setTimeout(() => {
-          if (this.eventSource?.readyState === EventSource.CLOSED && !this.accumulatedResponse) {
-            console.log('Attempting to reconnect...');
-            this.startAnalysis(caseDescription);
-          }
-        }, 3000);
+        // Check if we have any accumulated response
+        if (this.accumulatedResponse.trim()) {
+          console.log('Error occurred but we have accumulated response, treating as complete');
+          this.callbacks.onComplete?.(this.accumulatedResponse);
+        } else {
+          this.callbacks.onError?.('Connection error occurred. Please check your internet connection and try again.');
+        }
+        
+        this.close();
       };
 
     } catch (error) {
       console.error('Failed to start streaming analysis:', error);
-      this.callbacks.onError?.('Failed to start analysis');
+      this.callbacks.onError?.('Failed to start analysis: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
 

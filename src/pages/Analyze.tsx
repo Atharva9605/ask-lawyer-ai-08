@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import { healthCheck } from '@/lib/legalAdvisorAgent';
 import { StreamingLegalAnalyzer } from '@/lib/streamingApi';
 import { useNavigate } from 'react-router-dom';
+import { LegalAnalysisDisplay } from '@/components/LegalAnalysisDisplay';
 
 const Analyze = () => {
   const { toast } = useToast();
@@ -373,36 +374,16 @@ const Analyze = () => {
 
               {streamingContent && (
                 <div className="flex-1 overflow-auto">
-                  {/* Streaming Analysis Display */}
-                  <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                    <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">
-                      Legal Case Analysis
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
-                      <span>Analysis Date: {format(new Date(), 'PPP')}</span>
-                      <span>Status: {analysisComplete ? 'Complete' : 'Streaming...'}</span>
-                    </div>
-                  </div>
-
-                  {/* Streaming Content */}
-                  <div className="bg-white dark:bg-slate-800 rounded-lg p-6 border border-slate-200 dark:border-slate-700">
-                    <div className="prose prose-slate dark:prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                        {streamingContent}
-                      </pre>
-                      {!analysisComplete && (
-                        <div className="inline-flex items-center gap-2 mt-2">
-                          <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                          <span className="text-sm text-slate-500">AI is writing...</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <LegalAnalysisDisplay 
+                    content={streamingContent}
+                    isStreaming={loading}
+                    isComplete={analysisComplete}
+                  />
 
                   {/* Generate Report Button */}
                   {analysisComplete && (
-                    <div className="text-center py-6">
-                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800 mb-6">
+                    <div className="text-center py-6 mt-6">
+                      <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-200 dark:border-green-800">
                         <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
                         <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
                           Analysis Complete!
@@ -413,7 +394,7 @@ const Analyze = () => {
                         <Button 
                           onClick={handleGenerateReport}
                           size="lg"
-                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white legal-button-hover"
+                          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
                         >
                           <FileText className="w-5 h-5 mr-2" />
                           Generate Full Report
@@ -421,7 +402,6 @@ const Analyze = () => {
                       </div>
                     </div>
                   )}
-
                 </div>
               )}
             </div>
