@@ -1,5 +1,5 @@
 // Streaming API Client for Real-time Legal Analysis
-const API_BASE = 'https://legal-backend-sse.onrender.com';
+const API_BASE = 'https://legal-backend-api-sse.onrender.com';
 
 export interface StreamingAnalysisCallbacks {
   onStart?: () => void;
