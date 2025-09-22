@@ -1,5 +1,5 @@
 // API Client for Legal Advisor AI Agent
-const API_BASE = 'https://legal-advisor-api.onrender.com';
+const API_BASE = 'https://legal-backend-api-sse.onrender.com';
 
 // Types matching the exact API response structure
 export interface ThinkingStep {
@@ -37,11 +37,19 @@ export interface HealthResponse {
 // Health check endpoint
 export const healthCheck = async (): Promise<HealthResponse> => {
   try {
-    const response = await fetch(`${API_BASE}/api/health`);
+    const response = await fetch(`${API_BASE}/`, {
+      method: 'GET',
+    });
+    
     if (!response.ok) {
       throw new Error('Unable to connect to AI service');
     }
-    return await response.json();
+    
+    // Return a mock health response since the API root returns HTML
+    return {
+      status: 'healthy',
+      timestamp: new Date().toISOString()
+    };
   } catch (error) {
     throw new Error('Unable to connect to AI service');
   }

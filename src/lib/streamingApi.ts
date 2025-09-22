@@ -8,6 +8,27 @@ export interface StreamingAnalysisCallbacks {
   onError?: (error: string) => void;
 }
 
+// Test function to verify API accessibility
+const testApiAccess = async (): Promise<boolean> => {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(`${API_BASE}/`, {
+      method: 'GET',
+      signal: controller.signal,
+      mode: 'cors'
+    });
+    
+    clearTimeout(timeoutId);
+    console.log('API test response:', response.status, response.statusText);
+    return response.ok || response.status === 404; // 404 is fine, means server is up
+  } catch (error) {
+    console.error('API access test failed:', error);
+    return false;
+  }
+};
+
 export class StreamingLegalAnalyzer {
   private eventSource: EventSource | null = null;
   private callbacks: StreamingAnalysisCallbacks = {};
@@ -23,22 +44,34 @@ export class StreamingLegalAnalyzer {
       this.close();
       this.accumulatedResponse = '';
 
-      // Create the streaming connection using the new SSE API
-      // Use proper URL encoding for the case description
+      console.log('Starting legal analysis...');
+      
+      // First test API accessibility
+      const apiAccessible = await testApiAccess();
+      if (!apiAccessible) {
+        throw new Error('Unable to connect to the legal analysis API. The service may be temporarily unavailable.');
+      }
+
+      // Create the streaming connection
       const encodedPrompt = encodeURIComponent(caseDescription.trim());
       const url = `${API_BASE}/stream?prompt=${encodedPrompt}`;
       
       console.log('Starting SSE connection to:', url);
+      
       this.eventSource = new EventSource(url);
+      let connectionEstablished = false;
 
       // Set up event listeners
       this.eventSource.onopen = (event) => {
         console.log('SSE connection opened successfully', event);
+        connectionEstablished = true;
         this.callbacks.onStart?.();
       };
 
       this.eventSource.onmessage = (event) => {
         console.log('SSE message received:', event.data);
+        connectionEstablished = true;
+        
         // Handle regular data messages
         if (event.data && event.data.trim() && event.data !== '[DONE]') {
           const chunk = event.data;
@@ -54,25 +87,52 @@ export class StreamingLegalAnalyzer {
         this.close();
       });
 
-      // Handle connection errors
+      // Handle connection errors with detailed diagnosis
       this.eventSource.onerror = (event) => {
         console.error('EventSource error occurred:', event);
         console.error('EventSource readyState:', this.eventSource?.readyState);
         
-        // Check if we have any accumulated response
-        if (this.accumulatedResponse.trim()) {
-          console.log('Error occurred but we have accumulated response, treating as complete');
-          this.callbacks.onComplete?.(this.accumulatedResponse);
+        let errorMessage = '';
+        
+        if (!connectionEstablished) {
+          if (this.eventSource?.readyState === EventSource.CLOSED) {
+            errorMessage = 'Failed to establish connection to the legal analysis API. This could be due to:\n• Network connectivity issues\n• API service temporarily unavailable\n• Browser security restrictions\n\nPlease try again in a few moments.';
+          } else {
+            errorMessage = 'Connection to the legal analysis service is taking longer than expected. Please check your internet connection and try again.';
+          }
         } else {
-          this.callbacks.onError?.('Connection error occurred. Please check your internet connection and try again.');
+          // Connection was established but then failed
+          if (this.accumulatedResponse.trim()) {
+            console.log('Connection lost but we have partial response, treating as complete');
+            this.callbacks.onComplete?.(this.accumulatedResponse);
+            return;
+          } else {
+            errorMessage = 'Connection to the legal analysis service was lost. Please try again.';
+          }
         }
         
+        this.callbacks.onError?.(errorMessage);
         this.close();
       };
 
+      // Set a connection timeout
+      setTimeout(() => {
+        if (this.eventSource?.readyState === EventSource.CONNECTING) {
+          console.error('EventSource connection timeout');
+          this.callbacks.onError?.('Connection timeout: Unable to connect to the legal analysis service within 15 seconds. The service may be starting up or temporarily unavailable. Please try again in a moment.');
+          this.close();
+        }
+      }, 15000);
+
     } catch (error) {
       console.error('Failed to start streaming analysis:', error);
-      this.callbacks.onError?.('Failed to start analysis: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      let errorMessage = 'Failed to start legal analysis';
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+      
+      this.callbacks.onError?.(errorMessage);
     }
   }
 

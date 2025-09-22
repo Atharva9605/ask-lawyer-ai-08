@@ -35,7 +35,16 @@ const Analyze = () => {
       try {
         await healthCheck();
         setHealthStatus('healthy');
+        
+        // Also test the EventSource connection
+        const { testEventSourceConnection } = await import('@/lib/apiTest');
+        const canConnect = await testEventSourceConnection();
+        if (!canConnect) {
+          console.warn('EventSource connection test failed');
+          setHealthStatus('degraded');
+        }
       } catch (error) {
+        console.error('Health check failed:', error);
         setHealthStatus('error');
       }
     };
